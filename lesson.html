@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>單課頁面</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="page-header">
+    <a class="back" href="index.html">← 回首頁</a>
+    <a class="back" id="backModule" href="#">← 回課次列表</a>
+    <h1 id="lTitle"></h1>
+    <p id="lFocus"></p>
+  </header>
+  <main class="lesson-body">
+    <section class="block block-warmup">
+      <h2>① 打招呼・熱身</h2>
+      <div id="warmup"></div>
+    </section>
+    <section class="block block-main">
+      <h2>② 主要學習內容</h2>
+      <div id="main"></div>
+    </section>
+    <section class="block block-song">
+      <h2>③ 遊戲・歌曲</h2>
+      <div id="song"></div>
+    </section>
+    <section class="block block-worksheet">
+      <h2>④ 學習單</h2>
+      <div id="worksheet"></div>
+      <button onclick="window.print()">🖨 列印本課教案</button>
+    </section>
+  </main>
+  <footer id="footer"></footer>
+  <script src="lessons.js"></script>
+  <script>
+    function esc(s) { return String(s == null ? '' : s); }
+    function songHtml(s) {
+      if (!s || !s.url) return '';
+      return '<p>🎵 <strong>' + esc(s.name) + '</strong></p>' +
+        '<a class="song-btn" href="' + esc(s.url) + '" target="_blank" rel="noopener">▶ 播放歌曲（YouTube）</a>';
+    }
+    const params = new URLSearchParams(location.search);
+    const m = MODULES.find(function (x) { return x.id === params.get('m'); }) || MODULES[0];
+    const l = m.lessons.find(function (x) { return x.id === params.get('l'); }) || m.lessons[0];
+
+    document.getElementById('lTitle').textContent = l.no + '：' + l.title + (l.tag ? '（' + l.tag + '）' : '');
+    document.getElementById('lFocus').textContent = l.focus;
+    document.getElementById('backModule').href = 'module.html?m=' + m.id;
+    document.getElementById('footer').textContent = SITE.footer;
+
+    // ① 打招呼熱身
+    const w = l.warmup || {};
+    document.getElementById('warmup').innerHTML =
+      '<p>' + esc(w.activity) + '</p>' +
+      (w.song ? songHtml(w.song) : '');
+
+    // ② 主要學習內容
+    const mm = l.main || {};
+    let mh = '<p>' + esc(mm.intro || '') + '</p>';
+    if (l.objectives && l.objectives.length) {
+      mh += '<ul>' + l.objectives.map(function (o) { return '<li>' + esc(o) + '</li>'; }).join('') + '</ul>';
+    }
+    if (mm.uppercase) mh += '<p><strong>✏️ 大寫：</strong>' + esc(mm.uppercase) + '</p>';
+    if (mm.lowercase) mh += '<p><strong>✏️ 小寫：</strong>' + esc(mm.lowercase) + '</p>';
+    if (mm.vocab && mm.vocab.length) {
+      mh += '<div class="vocab">' + mm.vocab.map(function (v) {
+        return '<span>' + esc(v.en) + '　' + esc(v.zh) + '</span>';
+      }).join('') + '</div>';
+    }
+    if (mm.chant) mh += '<div class="chant">🎤 ' + esc(mm.chant) + '</div>';
+    document.getElementById('main').innerHTML = mh;
+
+    // ③ 遊戲・歌曲
+    const s = l.song || {};
+    const g = l.game || {};
+    document.getElementById('song').innerHTML =
+      (s.name || s.url ? songHtml(s) : '') +
+      '<p><strong>🎮 遊戲：' + esc(g.name || '') + '</strong></p>' +
+      '<p>' + esc(g.rules || '') + '</p>';
+
+    // ④ 學習單
+    const ws = l.worksheet || {};
+    document.getElementById('worksheet').innerHTML =
+      '<p><strong>📄 ' + esc(ws.name || '') + '</strong></p>' +
+      '<p>' + esc(ws.description || '') + '</p>';
+  </script>
+</body>
+</html>

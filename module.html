@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>課次列表</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="page-header">
+    <a class="back" href="index.html">← 回首頁</a>
+    <h1 id="mTitle"></h1>
+    <p id="mDesc"></p>
+  </header>
+  <main>
+    <ol class="lesson-list" id="lessonList"></ol>
+  </main>
+  <footer id="footer"></footer>
+  <script src="lessons.js"></script>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const m = MODULES.find(function (x) { return x.id === params.get('m'); }) || MODULES[0];
+    document.getElementById('mTitle').textContent = m.emoji + '　' + m.grade + '　' + m.semester + '：' + m.title;
+    document.getElementById('mDesc').textContent = m.description;
+    document.getElementById('footer').textContent = SITE.footer;
+    const list = document.getElementById('lessonList');
+    m.lessons.forEach(function (l) {
+      const li = document.createElement('li');
+      li.innerHTML =
+        '<a href="lesson.html?m=' + m.id + '&l=' + l.id + '">' +
+        '<span class="lesson-no">' + l.no + '</span>' +
+        '<span class="lesson-title">' + l.title + '</span>' +
+        (l.tag ? '<span class="lesson-tag">' + l.tag + '</span>' : '') +
+        '<span class="lesson-focus">' + l.focus + '</span>' +
+        '</a>';
+      list.appendChild(li);
+    });
+  </script>
+</body>
+</html>
