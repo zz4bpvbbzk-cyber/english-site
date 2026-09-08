@@ -8,52 +8,101 @@
   // ====== 通用工具 ======
   function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-  // 四線三格書寫格 — 三條橫線（天花板／橫虛線／地板），虛線描紅字母 + 兩個空白格
-  function fourLine(letter, opts) {
-    opts = opts || {};
-    var L = esc(letter || '');
+  // ─────────────────────────────────────────────────────────
+  // 四線格書寫格（G1 字母描寫用）
+  // 設計（強制數學）：
+  //   viewBox 140×170
+  //   - 天花板 (sky)  y=18
+  //   - 中線  (mid)   y=80 (dashed)
+  //   - 底線  (base)  y=140
+  //   - 額外 descender 區至 y=170
+  //
+  //   字母 baseline（alphabetic）= y=140；Arial 的 cap-height ≈ fontSize×0.716，
+  //   x-height ≈ fontSize×0.522，descender ≈ fontSize×0.215。
+  //
+  //   - 大寫 / ascenders (b,d,f,h,k,l,t) ：fontSize=170
+  //       cap_top = 140 − 0.716×170 = 140 − 121.7 = 18.3  ↔ ceiling y=18 ✅ 碰天花板
+  //   - 一般小寫 a,c,e,m,n,o,s,u,v,w,x,z ：fontSize=110
+  //       x_top   = 140 − 0.522×110 = 140 − 57.4 = 82.6  ↔ mid y=80     ✅ 碰中線
+  //   - descenders g,j,p,q,y ：fontSize=110
+  //       x_top   = 82.6  ↔ mid y=80     ✅
+  //       bottom  = 140 + 0.215×110 = 140 + 23.6 = 163.6  < viewBox 170  ✅ 不裁切
+  //
+  //   結論：所有筆畫都會真實碰線，descender 不會超出 viewBox。
+  // ─────────────────────────────────────────────────────────
+  function fourLine(letter) {
+    var L = String(letter == null ? '' : letter);
     if (!L) return '';
-    // SVG：140×120，描字用 stroke-dasharray，空白格不畫字
+    var ascenders  = /[bdfhkltBDFHKLT]/;
+    var descenders = /[gjpqyjGJPQYJ]/;
+    var isUpper = L >= 'A' && L <= 'Z';
+    var fontSize, baselineY = 140;
+    if (ascenders.test(L) || isUpper) fontSize = 170;
+    else                              fontSize = 110;  // 含一般小寫 + descenders
+    function slot(traced) {
+      var lines =
+        '<line x1="8" y1="18" x2="132" y2="18" stroke="#1976d2" stroke-width="1.4"/>' +
+        '<line x1="8" y1="80" x2="132" y2="80" stroke="#1976d2" stroke-width="1.2" stroke-dasharray="5 4"/>' +
+        '<line x1="8" y1="140" x2="132" y2="140" stroke="#1976d2" stroke-width="1.4"/>';
+      var glyph = traced
+        ? '<text x="70" y="' + baselineY + '" text-anchor="middle" dominant-baseline="alphabetic" ' +
+            'font-size="' + fontSize + '" font-family="Arial Black, Arial, sans-serif" font-weight="900" ' +
+            'fill="none" stroke="#e53935" stroke-width="3.6" stroke-dasharray="6 4" ' +
+            'stroke-linecap="round" stroke-linejoin="round">' + esc(L) + '</text>'
+        : '';
+      return '<svg viewBox="0 0 140 170" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" class="ws-trace-svg' + (traced ? '' : ' ws-blank') + '">' + lines + glyph + '</svg>';
+    }
     return '<div class="ws-trace">' +
       '<div class="ws-trace-grid">' +
-        '<svg viewBox="0 0 140 120" xmlns="http://www.w3.org/2000/svg" class="ws-trace-svg">' +
-          // 四條線（從上到下：天花板 top、橫虛線 mid、地板 baseline、地板下 descender）
-          '<line x1="6" y1="14" x2="134" y2="14" stroke="#1976d2" stroke-width="1.2"/>' +
-          '<line x1="6" y1="60" x2="134" y2="60" stroke="#1976d2" stroke-width="1.2" stroke-dasharray="4 4"/>' +
-          '<line x1="6" y1="106" x2="134" y2="106" stroke="#1976d2" stroke-width="1.2"/>' +
-          '<text x="70" y="92" text-anchor="middle" font-size="86" font-family="Comic Sans MS, Arial, sans-serif" font-weight="bold" fill="none" stroke="#e53935" stroke-width="2.2" stroke-dasharray="4 3" stroke-linecap="round" stroke-linejoin="round">' + L + '</text>' +
-          (opts.showTraceArrow ? '<text x="20" y="50" font-size="14" fill="#1976d2">起筆→</text>' : '') +
-        '</svg>' +
-        '<svg viewBox="0 0 140 120" xmlns="http://www.w3.org/2000/svg" class="ws-trace-svg">' +
-          '<line x1="6" y1="14" x2="134" y2="14" stroke="#1976d2" stroke-width="1.2"/>' +
-          '<line x1="6" y1="60" x2="134" y2="60" stroke="#1976d2" stroke-width="1.2" stroke-dasharray="4 4"/>' +
-          '<line x1="6" y1="106" x2="134" y2="106" stroke="#1976d2" stroke-width="1.2"/>' +
-          '<text x="70" y="92" text-anchor="middle" font-size="86" font-family="Comic Sans MS, Arial, sans-serif" font-weight="bold" fill="none" stroke="#e53935" stroke-width="2.2" stroke-dasharray="4 3" stroke-linecap="round" stroke-linejoin="round">' + L + '</text>' +
-        '</svg>' +
-        '<svg viewBox="0 0 140 120" xmlns="http://www.w3.org/2000/svg" class="ws-trace-svg ws-blank">' +
-          '<line x1="6" y1="14" x2="134" y2="14" stroke="#90a4ae" stroke-width="1"/>' +
-          '<line x1="6" y1="60" x2="134" y2="60" stroke="#90a4ae" stroke-width="1" stroke-dasharray="3 3"/>' +
-          '<line x1="6" y1="106" x2="134" y2="106" stroke="#90a4ae" stroke-width="1"/>' +
-        '</svg>' +
+        slot(true) +            // 模型格（紅虛線描寫）
+        slot(false) + slot(false) + slot(false) +  // 3 個空白格
       '</div>' +
-      '<div class="ws-trace-tiny">▲ 天花板線 &nbsp; ▬▬▬ 虛線 &nbsp; ▼ 底線</div>' +
+      '<div class="ws-trace-tiny">▲ 天花板線（ascender 碰這） &nbsp; ▬▬▬ 中線（x-height 碰這） &nbsp; ▼ 底線（baseline）　→ 描紅之後，自己再寫 3 次</div>' +
     '</div>';
   }
 
-  // 大字塗鴉區（給顏色筆用）
-  function bigOutline(letter) {
+  // ─────────────────────────────────────────────────────────
+  // 大字塗色框（G2 字族 / 字母塗色用）
+  // 設計：自動 scale-to-fit，glyph 必定不超出 viewBox。
+  // - viewBox 240×240，可用寬度 ≈ height ≈ 220（含邊界）
+  // - 大寫 fontSize=180（1 個字母），cap-height ≈ 130 → 頂端 y=18（剛碰頂線）
+  // - 2 個字母 fontSize=120、3 個字母 fontSize=88（保守縮放，預留 0.62 × 字數 × fontSize 寬度）
+  // ─────────────────────────────────────────────────────────
+  function bigOutline(glyph) {
+    var G = String(glyph == null ? '' : glyph);
+    if (!G) return '';
+    var isEmoji = /[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{1F300}-\u{1F9FF}]/u.test(G);
+    var segments = Array.from(G);
+    var n = segments.length;
+    var fontSize;
+    if (isEmoji) fontSize = 110;
+    else if (n === 1) fontSize = 180;
+    else if (n === 2) fontSize = 120;
+    else if (n === 3) fontSize = 86;
+    else if (n === 4) fontSize = 66;
+    else fontSize = Math.max(40, Math.floor(220 / (n * 0.62)));
+
+    var baselineY = 208;   // 字母底部對齊 baseline 線
+    var topY = 22, midY = 116, botY = 210;
+    var lines =
+      '<line x1="6" y1="' + topY + '" x2="234" y2="' + topY + '" stroke="#90a4ae" stroke-width="0.9"/>' +
+      '<line x1="6" y1="' + midY + '" x2="234" y2="' + midY + '" stroke="#90a4ae" stroke-width="0.9" stroke-dasharray="4 3"/>' +
+      '<line x1="6" y1="' + botY + '" x2="234" y2="' + botY + '" stroke="#90a4ae" stroke-width="0.9"/>';
+    var text =
+      '<text x="120" y="' + baselineY + '" text-anchor="middle" dominant-baseline="alphabetic" ' +
+      'font-size="' + fontSize + '" ' +
+      'font-family="Comic Sans MS, Arial, sans-serif" font-weight="900" ' +
+      'fill="none" stroke="#222" stroke-width="4" stroke-linejoin="round">' + esc(G) + '</text>';
+    var hint = '<text x="120" y="14" text-anchor="middle" font-size="11" fill="#888">（用彩色筆塗顏色）</text>';
     return '<div class="ws-color">' +
-      '<svg viewBox="0 0 220 230" xmlns="http://www.w3.org/2000/svg">' +
-        '<line x1="6" y1="22" x2="214" y2="22" stroke="#90a4ae" stroke-width="0.8"/>' +
-        '<line x1="6" y1="115" x2="214" y2="115" stroke="#90a4ae" stroke-width="0.8" stroke-dasharray="3 3"/>' +
-        '<line x1="6" y1="208" x2="214" y2="208" stroke="#90a4ae" stroke-width="0.8"/>' +
-        '<text x="110" y="190" text-anchor="middle" font-size="180" font-family="Comic Sans MS, Arial, sans-serif" font-weight="bold" fill="none" stroke="#222" stroke-width="4">' + esc(letter) + '</text>' +
-        '<text x="110" y="20" text-anchor="middle" font-size="11" fill="#888">（用彩色筆塗顏色）</text>' +
-      '</svg>' +
-    '</div>';
+      '<svg viewBox="0 0 240 240" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">' +
+        lines + text + hint +
+      '</svg></div>';
   }
 
+  // ─────────────────────────────────────────────────────────
   // 連連看：左 items 右 items，中間留連線區
+  // ─────────────────────────────────────────────────────────
   function linesMatch(leftItems, rightItems) {
     var out = '<div class="ws-match">';
     var n = Math.max(leftItems.length, rightItems.length);
@@ -68,7 +117,9 @@
     return out;
   }
 
+  // ─────────────────────────────────────────────────────────
   // 圈一圈：放 items（單字／圖示），每個旁邊畫一個大圈圈讓學生圈選
+  // ─────────────────────────────────────────────────────────
   function circleChoice(items, hint) {
     var out = '<div class="ws-circles">';
     if (hint) out += '<div class="ws-hint">💡 ' + esc(hint) + '</div>';
@@ -82,7 +133,9 @@
     return out;
   }
 
-  // 塗色：放圖示（單字母／emoji）加輪廓
+  // ─────────────────────────────────────────────────────────
+  // 塗色：把 items 每個包進 ws-color-cell（給大畫框＋單字標籤）
+  // ─────────────────────────────────────────────────────────
   function coloring(items) {
     var out = '<div class="ws-coloring">';
     for (var i = 0; i < items.length; i++) {
@@ -95,7 +148,7 @@
     return out;
   }
 
-  // 學習標題與目標
+  // ====== 學習單組裝工具 ======
   function pageTitle(l, m) {
     return '<div class="ws-pagetitle">🍎 ' + esc(m.grade) + ' ' + esc(m.semester) +
       ' ｜ <b>' + esc(l.no) + esc(l.title) + '</b>' +
@@ -119,7 +172,7 @@
     return '<div class="ws-q"><div class="ws-qlabel">' + esc(label) + '</div>' + html + '</div>';
   }
 
-  // ====== 樣板：Letter A–Z ======
+  // ====== 樣板：Letter A–Z (G1) ======
   function tplLetter(l, m) {
     var mLetterTitle = l.title.match(/Letter ([A-Z])/);
     if (!mLetterTitle) return null;
@@ -134,35 +187,34 @@
     html += focusLine(l);
     html += objectives(l);
 
-    // A. 大寫描寫 — 紅虛線 + 空白格（孩子用鉛筆沿著描，第二、第三格自己寫）
-    html += question('A. 大寫描寫：先描紅虛線字母，再自己寫', fourLine(L, { showTraceArrow: true }));
+    // A. 大寫描寫 — 1 紅虛線模型 + 3 空白（虛線不會變成空心字）
+    html += question('A. 大寫描寫：先描紅虛線字母，再自己寫 3 次', fourLine(L));
 
     // B. 小寫描寫
     html += question('B. 小寫描寫：注意起筆位置，小 a 像一個蘋果', fourLine(small));
 
-    // C. 圈出含有 L / small 的單字（圖卡）
+    // C. 圈出含有 L / small 的單字
     var distractor = ['🐱 Cat','🚪 Door','🍌 Ball','🌳 Tree'];
     var targetWords = words.slice(0, 3);
     var allCards = targetWords.concat(distractor);
     html += question('C. 圈出含有「' + L + '」或「' + small + '」的圖（請在泡泡上畫圈）',
       circleChoice(allCards, '看到以這個字母開頭的就圈起來'));
 
-    // D. 看中文塗顏色：第一個字母（A → 大塗鴉區）
+    // D. 給兩個字母塗顏色（字母 word family 也走單字母塗色，不會切）
     html += question('D. 給大字母 ' + L + ' ' + small + ' 塗上你喜歡的顏色',
       coloring([L, small]));
 
-    // E. 連連看：左英文、右中文（這個年紀認字量低，改左圖右圖對應的意思→用首音）
+    // E. 連連看
     if (meanings.length >= 2) {
       var leftImgs = words.slice(0, meanings.length).map(function(w, i){ return w + ' (' + meanings[i] + ')'; });
-      var justChinese = meanings.slice();
       html += question('E. 連連看：把英文和中文意思拉線配對',
-        linesMatch(leftImgs, justChinese));
+        linesMatch(leftImgs, meanings.slice()));
     }
 
-    // F. 圖畫區：在框裡畫 3 個看到 'A' 開頭的東西
+    // F. 自由畫
     html += question('F. 🎨 自由畫：畫 3 個以 ' + L + ' 開頭的東西（蘋果、鱷魚⋯）', '<div class="ws-drawbox"></div>');
 
-    // G. 回家口說（有勾選欄讓家長簽名）
+    // G. 回家口說 + 家長簽名
     html += question('G. 回家作業：唸三次 chant（' + esc(chant) + '），請家長簽名',
       '<div class="ws-sign">家長簽名：__________ &nbsp;&nbsp; ☐ 唸過 1 次  ☐ 唸過 3 次</div>');
 
@@ -176,14 +228,13 @@
     };
   }
 
-  // ====== 樣板：複習 (一/二年級) ======
+  // ====== 樣板：複習 (G1/G2) ======
   function tplReview(l, m, kind) {
     var html = pageTitle(l, m) + focusLine(l) + objectives(l);
-
     if (kind === 'size') {
       html += question('A. 大小寫連連看：左邊大寫要配哪個小寫？',
         linesMatch(['A','C','E','M','H'], ['c','h','m','e','a']));
-      html += question('B. 給大字母上顏色', coloring(['A','B','C','D','E']));
+      html += question('B. 給五個大字母上顏色', coloring(['A','B','C','D','E']));
     } else if (kind === 'sound') {
       html += question('A. 聽聲音，圈出正確的字母',
         circleChoice(['A','B','C','D','E'], '老師唸一個音，請圈出來'));
@@ -193,17 +244,15 @@
         circleChoice(['🍎 apple','🍌 banana','🐱 cat'], '聽到哪個就圈起來'));
       html += question('B. 把蘋果塗紅、香蕉塗黃', coloring(['🍎','🍌']));
     } else if (kind === 'ab' || kind === 'nano') {
-      html += question('A. 字母表連連看（A-Z 大小寫）',
+      html += question('A. 字母表連連看（A–Z 大小寫）',
         linesMatch(['A','C','E','G','I','M','O','S','W','Y'], ['w','s','o','m','i','g','e','c','a','y']));
       html += question('B. 塗你的幸運字母', coloring(['A','Z']));
     }
-
     html += question('C. 🎨 自由畫：畫你最喜歡的英文字母', '<div class="ws-drawbox"></div>');
-
     return { html: html, answers: { hint: '依課堂為準' } };
   }
 
-  // ====== 樣板：Phonics Intro (intro / g2a1 / g2a2) ======
+  // ====== 樣板：Phonics Intro ======
   function tplPhonicsIntro(l, m) {
     var html = pageTitle(l, m) + focusLine(l) + objectives(l);
     if (l.id === 'intro') {
@@ -214,60 +263,48 @@
       html += question('C. 給 Hello 上顏色', coloring(['👋','😊']));
     } else if (l.id === 'g2a1') {
       html += question('A. 聽老師唸的音，圈出對應的字母',
-        circleChoice(['a','e','i','o','u'], '母音：嘴巴張大或小圓'));
-      html += question('B. 給五個母音上不同顏色',
-        coloring(['a','e','i','o','u']));
+        circleChoice(['a','e','i','o','u'], '母音：張大嘴或小圓'));
+      html += question('B. 給五個母音上不同顏色', coloring(['a','e','i','o','u']));
     } else if (l.id === 'g2a2') {
       html += question('A. 補上缺的母音（圈出 5 個，然後唸出來）',
         circleChoice(['c_t','p_g','b_g','m_p','h_t'], '補上中間的母音'));
       html += question('B. 塗最簡單的 cvc 單字', coloring(['cat','pig']));
     }
-    return { html: html, answers: {
-      g2a1: { 'cat':'c-a-t', 'pig':'p-i-g', 'bag':'b-a-g', 'map':'m-a-p', 'hat':'h-a-t', 'pen':'p-e-n', 'bed':'b-e-d', 'red':'r-e-d' }
-    } };
+    return { html: html, answers: { g2a1: { 'cat':'c-a-t', 'pig':'p-i-g', 'bag':'b-a-g', 'map':'m-a-p', 'hat':'h-a-t', 'pen':'p-e-n', 'bed':'b-e-d', 'red':'r-e-d' } } };
   }
 
-  // ====== 樣板：字族 (at, an, ig 等) ======
+  // ====== 樣板：字族 ======
   function tplFamily(l, m, family) {
     var words = (l.main && l.main.vocab || []).map(function (v) { return v.en; });
     var meanings = (l.main && l.main.vocab || []).map(function (v) { return v.zh; });
     var onsetsSet = [];
-    var i;
-    for (i = 0; i < words.length; i++) {
-      var w = words[i];
-      onsetsSet.push(w.slice(0, w.length - family.length));
+    for (var i = 0; i < words.length; i++) {
+      onsetsSet.push(words[i].slice(0, words[i].length - family.length));
     }
     var onsets = Array.from(new Set(onsetsSet));
     var chant = (l.main && l.main.chant) || '';
 
     var html = pageTitle(l, m) + focusLine(l) + objectives(l);
 
-    // A. 連連看：左字首、右字族
     html += question('A. 連連看：左邊字首要配右邊哪個字族 ' + family + '？',
       linesMatch(onsets, [family, family, family, family, family].slice(0, onsets.length)));
 
-    // B. 圈出含有 family 的單字
     var distractors = ['sun','can','dot','bed','pit'];
     html += question('B. 圈出 ' + family + ' 家族的單字',
       circleChoice(words.concat(distractors), '看到字尾是 ' + family + ' 就圈'));
 
-    // C. 看中文塗顏色（給第一個字族字塗色）
     if (words.length) html += question('C. 給 ' + family + ' 系列單字塗顏色',
       coloring(words.slice(0, 4)));
 
-    // D. 看中文連連看
     if (meanings.length >= 2) {
-      html += question('D. 連連看單字和中文',
-        linesMatch(words, meanings));
+      html += question('D. 連連看單字和中文', linesMatch(words, meanings));
     }
 
-    // E. 自由畫
     html += question('E. 🎨 畫一幅圖，至少 2 個 ' + family + ' 單字出現在圖裡', '<div class="ws-drawbox"></div>');
 
     return { html: html, answers: { words: words, onsets: onsets, distractors: distractors } };
   }
 
-  // ====== 樣板：字族總複習 ======
   function tplFamilyReview(l, m, families) {
     var html = pageTitle(l, m) + focusLine(l);
     html += question('A. 連連看：哪個字族配哪個字首？',
@@ -275,12 +312,10 @@
     html += question('B. 圈出今天聽到的字族單字',
       circleChoice(['cat','pen','got','man','pig','log','cap','pan','mat','top','nap'],
         '每個字家族都要圈到至少一個'));
-    html += question('C. 🎨 給你最愛的字族上顏色',
-      coloring(families.slice(0, 4)));
+    html += question('C. 🎨 給你最愛的字族上顏色', coloring(families.slice(0, 4)));
     return { html: html, answers: { hint: families.length + ' families' } };
   }
 
-  // ====== 樣板：二合字母 (ch/sh/th/wh/ph) ======
   function tplDigraph(l, m, digraph) {
     var words = (l.main && l.main.vocab || []).map(function (v) { return v.en; });
     var meanings = (l.main && l.main.vocab || []).map(function (v) { return v.zh; });
@@ -288,16 +323,13 @@
 
     html += question('A. 在單字中圈出 ' + digraph + '（兩個字母要一起圈）',
       circleChoice(words, '看到 ' + digraph + ' 兩個字母相連就圈'));
-    html += question('B. 連連看英文和中文',
-      linesMatch(words, meanings));
-    html += question('C. 給 ' + digraph + ' 第一個單字塗顏色',
-      coloring([words[0] || digraph]));
+    html += question('B. 連連看英文和中文', linesMatch(words, meanings));
+    html += question('C. 給 ' + digraph + ' 第一個單字塗顏色', coloring([words[0] || digraph]));
     html += question('D. 🎨 畫一個含 ' + digraph + ' 的東西', '<div class="ws-drawbox"></div>');
 
     return { html: html, answers: { words: words, digraph: digraph } };
   }
 
-  // ====== 樣板：Magic e ======
   function tplMagicE(l, m) {
     var words = (l.main && l.main.vocab || []).map(function (v) { return v.en; });
     var html = pageTitle(l, m) + focusLine(l);
@@ -312,7 +344,6 @@
     return { html: html, answers: { words: words, pairs: { 'cap':'cape', 'mad':'made', 'pin':'pine' } } };
   }
 
-  // ====== 樣板：母音搭檔 / 長母音 ======
   function tplVowelTeam(l, m) {
     var words = (l.main && l.main.vocab || []).map(function (v) { return v.en; });
     var html = pageTitle(l, m) + focusLine(l);
@@ -345,8 +376,7 @@
     html += question('A. 圈出含 er / ir / ur 的單字',
       circleChoice(['her','bird','fur','girl','run','car','dog','sir'],
         '看到 r 後面沒母音的，整個一起唸'));
-    html += question('B. 連連看單字和分類',
-      linesMatch(words.slice(0, 3), ['er','ir','ur']));
+    html += question('B. 連連看單字和分類', linesMatch(words.slice(0, 3), ['er','ir','ur']));
     html += question('C. 給 bossy r 單字塗色', coloring(words.slice(0, 3)));
     return { html: html, answers: { words: words } };
   }
@@ -355,8 +385,7 @@
     var words = (l.main && l.main.vocab || []).map(function (v) { return v.en; });
     var html = pageTitle(l, m) + focusLine(l);
     html += question('A. 圈出結尾是 -ix 或 -id 的單字',
-      circleChoice(['six','mix','lid','kid','did','fit','cab','box'],
-        '看到結尾是 ix 或 id 就圈'));
+      circleChoice(['six','mix','lid','kid','did','fit','cab','box'], '看到結尾是 ix 或 id 就圈'));
     html += question('B. 連連看', linesMatch(words, ['六','混合','蓋子','小孩']));
     html += question('C. 給 ix / id 塗色', coloring(['ix','id']));
     return { html: html, answers: { words: words } };
@@ -378,14 +407,12 @@
     var end = (l.tag || '').replace(/^\-/, '');
     var html = pageTitle(l, m) + focusLine(l);
     html += question('A. 圈出字尾 ' + end + ' 的單字',
-      circleChoice(words.concat(['run','sit','pen','man','top','cat']),
-        '看到結尾 ' + end + ' 就圈'));
+      circleChoice(words.concat(['run','sit','pen','man','top','cat']), '看到結尾 ' + end + ' 就圈'));
     html += question('B. 連連看拆音', linesMatch(['han-d','kin-g'], ['hand','king']));
     html += question('C. 給 ' + end + ' 系列塗色', coloring(words.slice(0, 3)));
     return { html: html, answers: { words: words, end: end } };
   }
 
-  // ====== 樣板：練習題（annam / initial / final / rhyme / blend / reader / spell / dict / cvc）======
   function tplPractice(l, m, kind) {
     var html = pageTitle(l, m) + focusLine(l);
     if (kind === 'anam') {
@@ -443,7 +470,7 @@
 
   // ====== 路由 ======
   function route(m, l) {
-    var id = l.id, tag = l.tag || '';
+    var id = l.id;
     if (/^[a-z]$/.test(id) && l.title.startsWith('Letter ')) return tplLetter(l, m);
     if (['intro','g2a1','g2a2'].indexOf(id) >= 0) return tplPhonicsIntro(l, m);
     if (/^r[1-5]$/.test(id) && (m.id === 'g1a' || m.id === 'g1b')) {
@@ -494,27 +521,28 @@
     return { html: pageTitle(l, m) + focusLine(l) + '<div class="ws-drawbox"></div>', answers: { hint: '自由作答' } };
   }
 
-  // ====== 安全：把 HTML 學習單轉成可列印頁面 ======
+  // ====== 把內容轉成可列印頁面（A4 列印樣式重點：頁邊 12mm、列印時不留超出版面）======
   function toHtml(bodyHtml, title) {
     var css =
       'body{font-family:"Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif;max-width:780px;margin:18px auto;color:#222;padding:0 16px;background:#fffceb;}' +
       'h1{color:#ff7043;border-bottom:3px solid #ffd166;padding-bottom:8px;font-size:1.4rem;margin:0 0 14px 0;}' +
       '.print-btn{position:fixed;top:12px;right:12px;background:#ff7043;color:#fff;padding:10px 18px;border-radius:10px;border:none;font-size:1rem;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.15);z-index:99;}' +
       '.print-btn:hover{background:#ff5722;}' +
-      // 主要內容外殼
       '.ws-pagetitle{font-size:1.1rem;margin:4px 0 6px 0;}' +
       '.ws-focus{background:#fff8ef;border-left:4px solid #ffb74d;padding:8px 12px;margin:6px 0 12px 0;border-radius:0 8px 8px 0;}' +
       '.ws-objectives{background:#fff;padding:8px 12px;border-radius:8px;margin-bottom:10px;}' +
       '.ws-objectives ul{margin:6px 0 0 0;padding-left:22px;}' +
       '.ws-objectives li{margin:4px 0;font-size:1rem;}' +
-      '.ws-q{border:1px dashed #ffd1aa;background:#fff;padding:12px 14px;border-radius:12px;margin:14px 0;}' +
+      '.ws-q{border:1px dashed #ffd1aa;background:#fff;padding:12px 14px;border-radius:12px;margin:14px 0;overflow:hidden;}' +
       '.ws-qlabel{font-weight:bold;color:#c05621;margin-bottom:8px;font-size:1.05rem;}' +
       // 四線描寫格
       '.ws-trace{display:flex;align-items:center;gap:18px;flex-wrap:wrap;}' +
-      '.ws-trace-grid{display:flex;gap:10px;}' +
-      '.ws-trace-svg{width:60px;height:60px;background:#fffdf6;border:1px solid #eee;border-radius:6px;}' +
+      '.ws-trace-grid{display:flex;gap:14px;}' +
+      '.ws-trace-svg{width:88px;height:108px;background:#fffdf6;border:1px solid #eee;border-radius:6px;display:inline-block;}' +
       '.ws-trace-svg.ws-blank{background:#fffbea;}' +
-      '.ws-trace-tiny{font-size:0.78rem;color:#5b6e7d;}' +
+      // viewBox 140×170 → 寬高比 14:17，CSS 用 aspect-ratio 同步防止拉伸
+      '.ws-trace-svg, .ws-trace-svg svg{aspect-ratio:140/170;}' +
+      '.ws-trace-tiny{font-size:0.78rem;color:#5b6e7d;margin-top:6px;}' +
       // 圈選
       '.ws-circles{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:center;}' +
       '.ws-circle-item{display:inline-flex;align-items:center;gap:6px;background:#fff;padding:8px 10px;border-radius:10px;border:1px solid #eee;}' +
@@ -528,24 +556,25 @@
       '.ws-match-mid{flex:1;color:#888;letter-spacing:1px;font-family:monospace;}' +
       '.ws-match-right{flex:0 0 32%;text-align:left;background:#fff;border:1px solid #eee;padding:8px 10px;border-radius:8px;}' +
       // 塗色
-      '.ws-coloring{display:flex;flex-wrap:wrap;gap:14px;}' +
-      '.ws-color-cell{display:flex;flex-direction:column;align-items:center;background:#fff;border-radius:12px;padding:6px;border:1px solid #eee;}' +
-      '.ws-color-cell .ws-color-label{font-size:0.9rem;color:#5b6e7d;margin-top:2px;}' +
-      '.ws-color{display:inline-block;width:120px;height:130px;background:#fff;}' +
-      '.ws-color svg{width:100%;height:100%;}' +
+      '.ws-coloring{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start;}' +
+      '.ws-color-cell{display:flex;flex-direction:column;align-items:center;background:#fff;border-radius:12px;padding:6px;border:1px solid #eee;min-width:140px;}' +
+      '.ws-color-cell .ws-color-label{font-size:1rem;color:#5b6e7d;margin-top:2px;font-weight:bold;}' +
+      '.ws-color{display:inline-block;width:130px;height:130px;background:#fff;}' +
+      '.ws-color svg{width:100%;height:100%;display:block;}' +
       // 自由繪圖區
       '.ws-drawbox{min-height:130px;background:#fffbea;border:2px dashed #90a4ae;border-radius:12px;}' +
       // 簽名
       '.ws-sign{background:#fff;padding:10px 12px;border-radius:8px;border:1px solid #eee;}' +
-      // 列印
+      // 列印（A4，邊界 12mm，塗色框／描寫格保證不切）
       '@media print{' +
         '.print-btn{display:none!important;}' +
-        'body{margin:0;background:#fff;}' +
-        '.ws-q{break-inside:avoid;border-color:#888;}' +
-        '.ws-trace-svg,.ws-color svg{print-color-adjust:exact;}' +
+        'body{margin:0;background:#fff;padding:0;}' +
+        '.ws-q{break-inside:avoid;border-color:#888;page-break-inside:avoid;}' +
+        '.ws-trace-svg,.ws-color svg{print-color-adjust:exact;-webkit-print-color-adjust:exact;}' +
         '.ws-match-mid{color:#444;}' +
+        '.ws-color svg{break-inside:avoid;}' +
       '}' +
-      '@page{size:A4;margin:14mm;}';
+      '@page{size:A4;margin:12mm;}';
 
     var html =
       '<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8">' +
@@ -554,7 +583,6 @@
       '</head><body>' +
       '<button class="print-btn" onclick="window.print()">🖨 列印 / 存 PDF</button>' +
       '<h1>' + esc(title) + '</h1>' +
-      // 姓名欄
       '<div style="background:#fff;padding:10px 14px;border:1px solid #ffd1aa;border-radius:10px;margin-bottom:14px;font-size:1rem;">' +
         '👤 姓名：<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>　班級：<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>　座號：<u>&nbsp;&nbsp;&nbsp;&nbsp;</u>　日期：<u>&nbsp;&nbsp;</u>月<u>&nbsp;&nbsp;</u>日' +
       '</div>' +
@@ -583,8 +611,7 @@
     open: function (m, l, mode) { openPrintable(m, l, mode || 'preview'); },
     showAnswers: function (m, l, host) {
       var r = route(m, l);
-      var txt = '📋 教師版 參考答案（此區非給學生看）\n\n' +
-                JSON.stringify(r.answers, null, 2);
+      var txt = '📋 教師版 參考答案（此區非給學生看）\n\n' + JSON.stringify(r.answers, null, 2);
       if (host) host.textContent = txt;
       return txt;
     }
