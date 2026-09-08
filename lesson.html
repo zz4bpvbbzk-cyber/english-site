@@ -12,6 +12,11 @@
     <a class="back" id="backModule" href="#">← 回課次列表</a>
     <h1 id="lTitle"></h1>
     <p id="lFocus"></p>
+    <div class="lesson-tools" id="lessonTools">
+      <button class="ws-btn ws-preview" id="btnPreviewWS" type="button">🧾 一鍵生成學習單</button>
+      <button class="ws-btn ws-print" id="btnPrintWS" type="button">🖨 直接列印學習單</button>
+      <button class="ws-btn ws-toggle" id="btnShowAnswers" type="button" aria-expanded="false">🔑 顯示教師版答案</button>
+    </div>
   </header>
   <main class="lesson-body">
     <section class="block block-warmup">
@@ -29,10 +34,13 @@
     <section class="block block-worksheet">
       <h2>④ 學習單</h2>
       <div id="worksheet"></div>
-      <button onclick="window.print()">🖨 列印本課教案</button>
+      <pre id="wsPreview" class="ws-preview-box" style="display:none;"></pre>
+      <pre id="wsAnswers" class="ws-answers-box" style="display:none;"></pre>
     </section>
   </main>
   <footer id="footer"></footer>
+  <script src="progress.js"></script>
+  <script src="worksheets.js"></script>
   <script src="lessons.js"></script>
   <script>
     function esc(s) { return String(s == null ? '' : s); }
@@ -41,24 +49,22 @@
       return '<p>🎵 <strong>' + esc(s.name) + '</strong></p>' +
         '<a class="song-btn" href="' + esc(s.url) + '" target="_blank" rel="noopener">▶ 播放歌曲（YouTube）</a>';
     }
-    const params = new URLSearchParams(location.search);
-    const m = MODULES.find(function (x) { return x.id === params.get('m'); }) || MODULES[0];
-    const l = m.lessons.find(function (x) { return x.id === params.get('l'); }) || m.lessons[0];
+    var params = new URLSearchParams(location.search);
+    var m = MODULES.find(function (x) { return x.id === params.get('m'); }) || MODULES[0];
+    var l = m.lessons.find(function (x) { return x.id === params.get('l'); }) || m.lessons[0];
 
     document.getElementById('lTitle').textContent = l.no + '：' + l.title + (l.tag ? '（' + l.tag + '）' : '');
     document.getElementById('lFocus').textContent = l.focus;
     document.getElementById('backModule').href = 'module.html?m=' + m.id;
     document.getElementById('footer').textContent = SITE.footer;
 
-    // ① 打招呼熱身
-    const w = l.warmup || {};
+    var w = l.warmup || {};
     document.getElementById('warmup').innerHTML =
       '<p>' + esc(w.activity) + '</p>' +
       (w.song ? songHtml(w.song) : '');
 
-    // ② 主要學習內容
-    const mm = l.main || {};
-    let mh = '<p>' + esc(mm.intro || '') + '</p>';
+    var mm = l.main || {};
+    var mh = '<p>' + esc(mm.intro || '') + '</p>';
     if (l.objectives && l.objectives.length) {
       mh += '<ul>' + l.objectives.map(function (o) { return '<li>' + esc(o) + '</li>'; }).join('') + '</ul>';
     }
@@ -72,19 +78,50 @@
     if (mm.chant) mh += '<div class="chant">🎤 ' + esc(mm.chant) + '</div>';
     document.getElementById('main').innerHTML = mh;
 
-    // ③ 遊戲・歌曲
-    const s = l.song || {};
-    const g = l.game || {};
+    var s2 = l.song || {};
+    var g2 = l.game || {};
     document.getElementById('song').innerHTML =
-      (s.name || s.url ? songHtml(s) : '') +
-      '<p><strong>🎮 遊戲：' + esc(g.name || '') + '</strong></p>' +
-      '<p>' + esc(g.rules || '') + '</p>';
+      (s2.name || s2.url ? songHtml(s2) : '') +
+      '<p><strong>🎮 遊戲：' + esc(g2.name || '') + '</strong></p>' +
+      '<p>' + esc(g2.rules || '') + '</p>';
 
-    // ④ 學習單
-    const ws = l.worksheet || {};
-    document.getElementById('worksheet').innerHTML =
-      '<p><strong>📄 ' + esc(ws.name || '') + '</strong></p>' +
-      '<p>' + esc(ws.description || '') + '</p>';
+    var ws = l.worksheet || {};
+    var html = '<p><strong>📄 名稱：' + esc(ws.name || '') + '</strong></p>' +
+               '<p style="color:#6a5a4e;">' + esc(ws.description || '') + '</p>';
+    try {
+      var r = Worksheets.build(m, l);
+      html += '<p class="ws-meta">🎯 本課學習單已準備好（含 ' +
+              (r && r.answers ? '教師版參考答案' : '活動設計') +
+              '），請點上方「一鍵生成學習單」在新分頁開啟可列印版本，或「直接列印學習單」立即打印。</p>';
+      html += '<div class="ws-chips">題型包含：';
+      var chips = document.createDocumentFragment();
+      document.getElementById('worksheet').innerHTML = html;
+      window.__ws = r;
+    } catch (e) {
+      document.getElementById('worksheet').innerHTML = html +
+        '<p style="color:#c05621;margin-top:8px;">⚠️ 學習單生成失敗：' + esc(e.message) + '</p>';
+    }
+
+    document.getElementById('btnPreviewWS').addEventListener('click', function () {
+      Worksheets.open(m, l, 'preview');
+    });
+    document.getElementById('btnPrintWS').addEventListener('click', function () {
+      Worksheets.open(m, l, 'print');
+    });
+    var btnAns = document.getElementById('btnShowAnswers');
+    var ansBox = document.getElementById('wsAnswers');
+    btnAns.addEventListener('click', function () {
+      if (ansBox.style.display === 'none') {
+        Worksheets.showAnswers(m, l, ansBox);
+        ansBox.style.display = 'block';
+        btnAns.textContent = '🔑 隱藏教師版答案';
+        btnAns.setAttribute('aria-expanded', 'true');
+      } else {
+        ansBox.style.display = 'none';
+        btnAns.textContent = '🔑 顯示教師版答案';
+        btnAns.setAttribute('aria-expanded', 'false');
+      }
+    });
   </script>
 </body>
 </html>
