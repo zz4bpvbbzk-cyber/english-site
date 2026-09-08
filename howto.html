@@ -1,63 +1,36 @@
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>使用說明</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <header class="page-header">
-    <a class="back" href="index.html">← 回首頁</a>
-    <h1>📖 使用說明（給老師）</h1>
-  </header>
-  <main class="howto">
-    <h2>這個網站怎麼運作？</h2>
-    <p>整個網站只有「一個課程資料檔」＋「幾個頁面模板」。所有課程內容都寫在 <code>lessons.js</code> 裡，瀏覽器打開頁面時會自動把資料變成漂亮的網頁。所以：<strong>以後想新增課程，只要編輯 lessons.js 一個檔案就好</strong>，不用寫任何網頁程式。</p>
-
-    <h2>怎麼開啟網站？</h2>
-    <ol>
-      <li>把整個資料夾下載解壓縮。</li>
-      <li>雙擊 <code>index.html</code> 就能在瀏覽器開啟（離線也能用）。</li>
-      <li>想讓家長或學生線上瀏覽：把整個資料夾上傳到 <strong>GitHub Pages</strong> 或 <strong>Netlify</strong>（免費），就會得到一個網址。</li>
-    </ol>
-
-    <h2>怎麼新增一節課？</h2>
-    <p>用記事本（或 VS Code）打開 <code>lessons.js</code>，找到你要新增課程的那個學期（例如 <code>g1a</code> 是一上），在它的 <code>lessons: [ ... ]</code> 陣列裡，<strong>複製一筆現有的課程物件</strong>，貼在最後一筆的後面（記得上一筆結尾要有逗號），再修改內容即可。</p>
-    <p>每一節課固定有這幾個欄位（對應你設計的四段式教學）：</p>
-    <pre>{
-  id: "a",            // 唯一代號（不能重複，用英文或數字）
-  no: "第 2 課",       // 課次
-  title: "Letter A",  // 課名
-  tag: "Aa",          // 標籤（例如字母）
-  sound: "/æ/",       // 發音
-  focus: "字母 Aa 的…", // 本課重點（會顯示在列表）
-  objectives: ["…"],   // 教學目標
-  warmup: {           // ① 打招呼・熱身
-    song: { name: "…", url: "https://www.youtube.com/watch?v=…" },
-    activity: "活動說明"
-  },
-  main: {             // ② 主要學習內容
-    intro: "…",
-    uppercase: "大寫筆順說明",
-    lowercase: "小寫筆順說明",
-    vocab: [ { en: "apple", zh: "蘋果" } ],
-    chant: "A, a, apple!"
-  },
-  song: { name: "…", url: "https://www.youtube.com/watch?v=…" }, // ③ 歌曲
-  game: { name: "遊戲名", rules: "遊戲規則" },                     // ③ 遊戲
-  worksheet: { name: "學習單名", description: "學習單說明" }       // ④ 學習單
-}</pre>
-
-    <h2>怎麼找 YouTube 影片連結？</h2>
-    <p>在 YouTube 搜尋「Super Simple ABCs The A Song」之類的關鍵字，複製網址列「watch?v=…」的完整網址貼到 <code>url</code> 欄位即可。建議用 <strong>Super Simple ABCs</strong> 的字母歌（每課一首，約 40 秒，最適合低年級）。</p>
-
-    <h2>列印學習單</h2>
-    <p>打開某一課的頁面，按右下角「🖨 列印本課教案」，就會印出乾淨的教案（不含按鈕和選單），可以直接放進教案本。</p>
-
-    <h2>想改網站名稱或顏色？</h2>
-    <p>在 <code>lessons.js</code> 最上面的 <code>SITE</code> 可以改網站標題；每個學期的 <code>color</code> 可以改卡片顏色。</p>
-  </main>
-  <footer>國小英語字母樂園・使用說明</footer>
-</body>
-</html>
+<!DOCTYPE html><html lang="zh-Hant"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>使用說明 - 國小英語教學網</title>
+<link rel="stylesheet" href="style.css"></head><body>
+<header class="topbar"><a class="brand" href="index.html">📚 國小英語教學網</a>
+<nav><a href="index.html">首頁</a><a href="howto.html">使用說明</a></nav></header>
+<main class="container">
+<h1>📖 使用說明</h1>
+<h2>網站結構</h2>
+<ul>
+<li><b>首頁</b>：4 個模組卡片（一年級上／下、二年級上／下），含全校進度條。</li>
+<li><b>模組頁</b>：每課一張卡，右側 ✓ 標記是否完成。</li>
+<li><b>單課頁</b>：4 區塊（暖身／主要內容／遊戲歌曲／學習單）+ YouTube 影片。</li>
+</ul>
+<h2>學習單 (Worksheet)</h2>
+<ol>
+<li>在單課頁下方按 <b>🖨 一鍵生成學習單</b>。</li>
+<li>瀏覽器會打開新分頁顯示可列印 A4 版，含姓名／班級欄。</li>
+<li>按 <b>顯示教師版答案</b> 切換／隱藏解答。</li>
+<li>按鈕 <b>🖨 列印 / 存 PDF</b> ⇒ 自訂不清除列印樣式。</li>
+</ol>
+<h2>進度追蹤</h2>
+<ul>
+<li>依瀏覽器 localStorage 儲存，不需登入。</li>
+<li>單課頁底部 <b>✅ 我上完這堂課了</b> 即可勾選。</li>
+<li>首頁／模組頁即時同步更新。</li>
+</ul>
+<h2>列印樣式 (A4)</h2>
+<ul>
+<li>已針對影印機優化：黑白友善、留白供學生作答。</li>
+<li>解除：瀏覽器列印設定勾除「頁首頁尾」。</li>
+</ul>
+<h2>教師自訂內容</h2>
+<p>編輯 <code>lessons.js</code> 與 <code>worksheets.js</code> 即可新增／修改內容，不需改 HTML。</p>
+</main><footer class="footer">© 國小英語教學網</footer>
+<script src="progress.js"></script></body></html>

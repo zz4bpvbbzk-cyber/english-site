@@ -1,13 +1,30 @@
-# 國小英語字母樂園（GitHub Pages 版）
+# 國小英語教學網 (Grades 1-2)
 
-單檔互動網站：一年級字母（A–M／N–Z）＋二年級 Phonics 複習，共 4 模組 80 節課。
-所有課程資料（160 個 YouTube 教學影片連結）與三層導覽（首頁→課次列表→單課詳情）皆內嵌於 index.html，無任何外部檔案。
+## 開始使用
+直接打開 `index.html`，或部署到 GitHub Pages / Netlify。
 
-## 部署方式
-1. 建立 GitHub repository（如 english-site）
-2. 上傳本資料夾內 index.html 與 .nojekyll（或整包 ZIP 解壓上傳）
-3. Repository → Settings → Pages → Build and deployment → Source 選 "Deploy from a branch" → Branch 選 main / (root) → Save
-4. 等待約 1 分鐘，網址即為 https://<帳號>.github.io/<repo名稱>/
+## 結構
+- 一上：A–M (20 課)
+- 一下：N–Z (20 課)
+- 二上：Phonics 複習 + 字族 (23 課)
+- 二下：Phonics 進階 + 長母音 (32 課)
+- 合計 95 課，含 190+ 個已驗證 YouTube 教學影片
 
-## 更新課程
-直接編輯 index.html 內嵌的課程資料（或改用多檔版 english-site.zip 的 lessons.js 後重新產生）。
+## 學習單 (worksheets.js)
+每課都包含：學習目標、暖身題、概念填空、實作任務、反思題、教師版答案。
+在單課頁按「🖨 一鍵生成學習單」即可。
+
+## 進度追蹤 (progress.js)
+localStorage 儲存，三頁(首頁 / 模組頁 / 課頁) 即時同步。
+
+## 檔案說明
+| 檔案 | 用途 |
+|---|---|
+| index.html | 首頁 (4 張模組卡) |
+| module.html | 模組頁 (課次清單+進度) |
+| lesson.html | 單課頁 (4 區塊+影片+學習單) |
+| howto.html | 使用說明 |
+| lessons.js | 全部課程資料 |
+| worksheets.js | 全部學習單資料 (95 份) |
+| progress.js | 進度追蹤 |
+| style.css | 樣式表 + 列印樣式 |
