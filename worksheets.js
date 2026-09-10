@@ -9,6 +9,25 @@
   function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
   // ─────────────────────────────────────────────────────────
+  // 字型（用於 worksheet 的英文小寫、單字、塗色字，全部走「單層 a」手寫體）
+  // - 描寫格小寫 a 走 Patrick Hand SC（單層 ɑ） → Schoolbell → Comic Sans MS
+  // - 塗色大字走 Permanent Marker（粗單層筆跡） → Patrick Hand SC
+  // - 兩組字型都從 Google Fonts 線上載入（也支援 font-display:swap 因此 fallback cursive 仍可用）
+  // - 不會把字元改為 Unicode lookalike（保留 U+0061 'a'），僅在 font-family 層級換字型
+  // ─────────────────────────────────────────────────────────
+  // 使用者要「A 原尺寸 + 單層 a」。上版把 A 全拖進 Patrick Hand SC 系統造成 A 縮小 25 px 視覺錯誤（PHSC cap-height 只有 0.55×em）。
+  // 修正 (v28)：分兩套字型 — 大寫 A/B/C…走 UPPER_FONT (Arial Black) 拿原尺寸 cap-height 0.72×em (140 − 0.72×170 ≈ 17.6 → 碰天花板)；
+  //              小寫 a/c/e/… 走 LOWER_FONT (Patrick Hand SC) 拿單層 ɑ 筆跡 (140 − 0.55×110 ≈ 79.5 → 碰中線)。
+  var UPPER_FONT = "'Arial Black','Comic Sans MS','Trebuchet MS','Liberation Sans','sans-serif'";
+  // 參考圖二要「蘋果形」單層 ɑ：圓身體＋右側微彎帶小尾巴的豎筆。
+  // 優先 Caveat Brush(教科書周筆觸) → Patrick Hand SC(單層ɑ classic) → Sniglet 備援
+  var LOWER_FONT = "'Caveat Brush','Patrick Hand SC','Sniglet','Schoolbell','Comic Sans MS','cursive'";
+  var HAND_FONT  = UPPER_FONT + ',' + LOWER_FONT;
+  var COLOR_FONT = "'Permanent Marker','Patrick Hand SC','Schoolbell','Comic Sans MS','Bradley Hand','cursive'";
+  var GOOGLE_FONTS_HREF =
+    'https://fonts.googleapis.com/css2?family=Patrick+Hand+SC&family=Caveat+Brush&family=Sniglet&family=Schoolbell&family=Permanent+Marker&family=Cabin+Sketch&family=Arial+Black&display=swap';
+
+  // ─────────────────────────────────────────────────────────
   // 四線格書寫格（G1 字母描寫用）
   // 設計（強制數學）：
   //   viewBox 140×170
@@ -37,27 +56,33 @@
     var descenders = /[gjpqyjGJPQYJ]/;
     var isUpper = L >= 'A' && L <= 'Z';
     var fontSize, baselineY = 140;
-    if (ascenders.test(L) || isUpper) fontSize = 170;
-    else                              fontSize = 110;  // 含一般小寫 + descenders
+    if (ascenders.test(L) || isUpper) fontSize = 170;  // 大寫 + ascender (b/d/f/h/k/l/t) (Arial Black → 原尺寸)
+    else                              fontSize = 110;  // 一般小寫 + descenders (PHSC → 單層 ɑ 筆跡)
+    var dash = isUpper ? '6 3' : '5 3';  // 描寫虛線節距(大寫稍寬)
     function slot(traced) {
+      var useFont = isUpper ? UPPER_FONT : LOWER_FONT;
+      var sw = isUpper ? '3.0' : '3.4';
+      // 兩層: 底層 ghost body(極淡粉紅,讓字母有填色不再空心) + 上層紅虛線描寫
+      // 注意 paint-order="stroke fill" 讓紅虛線畫在淡粉上面,虛線樣式保持明確
+      var glyph = traced
+        ? '<text x="70" y="' + baselineY + '" text-anchor="middle" dominant-baseline="alphabetic" ' +
+            'font-size="' + fontSize + '" font-family="' + useFont + '" font-weight="900" ' +
+            'paint-order="stroke fill" ' +
+            'fill="#ffeaea" stroke="#e53935" stroke-width="' + sw + '" stroke-dasharray="' + dash + '"' +
+            'stroke-linecap="round" stroke-linejoin="round">' + esc(L) + '</text>'
+        : '';
       var lines =
         '<line x1="8" y1="18" x2="132" y2="18" stroke="#1976d2" stroke-width="1.4"/>' +
         '<line x1="8" y1="80" x2="132" y2="80" stroke="#1976d2" stroke-width="1.2" stroke-dasharray="5 4"/>' +
         '<line x1="8" y1="140" x2="132" y2="140" stroke="#1976d2" stroke-width="1.4"/>';
-      var glyph = traced
-        ? '<text x="70" y="' + baselineY + '" text-anchor="middle" dominant-baseline="alphabetic" ' +
-            'font-size="' + fontSize + '" font-family="Arial Black, Arial, sans-serif" font-weight="900" ' +
-            'fill="none" stroke="#e53935" stroke-width="3.6" stroke-dasharray="6 4" ' +
-            'stroke-linecap="round" stroke-linejoin="round">' + esc(L) + '</text>'
-        : '';
       return '<svg viewBox="0 0 140 170" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" class="ws-trace-svg' + (traced ? '' : ' ws-blank') + '">' + lines + glyph + '</svg>';
     }
     return '<div class="ws-trace">' +
       '<div class="ws-trace-grid">' +
-        slot(true) +            // 模型格（紅虛線描寫）
-        slot(false) + slot(false) + slot(false) +  // 3 個空白格
+        slot(true) +                                            // model 格 (1)
+        slot(false) + slot(false) + slot(false) + slot(false) + slot(false) + slot(false) +  // 6 個空白練習格
       '</div>' +
-      '<div class="ws-trace-tiny">▲ 天花板線（ascender 碰這） &nbsp; ▬▬▬ 中線（x-height 碰這） &nbsp; ▼ 底線（baseline）　→ 描紅之後，自己再寫 3 次</div>' +
+      '<div class="ws-trace-tiny">▲ 天花板線（ascender 碰這） &nbsp; ▬▬▬ 中線（x-height 碰這） &nbsp; ▼ 底線（baseline）　→ 描紅之後，自己再寫 6 次</div>' +
     '</div>';
   }
 
@@ -91,7 +116,7 @@
     var text =
       '<text x="120" y="' + baselineY + '" text-anchor="middle" dominant-baseline="alphabetic" ' +
       'font-size="' + fontSize + '" ' +
-      'font-family="Comic Sans MS, Arial, sans-serif" font-weight="900" ' +
+      'font-family="' + COLOR_FONT + '" font-weight="700" ' +
       'fill="none" stroke="#222" stroke-width="4" stroke-linejoin="round">' + esc(G) + '</text>';
     var hint = '<text x="120" y="14" text-anchor="middle" font-size="11" fill="#888">（用彩色筆塗顏色）</text>';
     return '<div class="ws-color">' +
@@ -578,6 +603,9 @@
 
     var html =
       '<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8">' +
+      '<link rel="preconnect" href="https://fonts.googleapis.com">' +
+      '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
+      '<link rel="stylesheet" href="' + GOOGLE_FONTS_HREF + '">' +
       '<title>' + esc(title) + ' — 學習單</title>' +
       '<style>' + css + '</style>' +
       '</head><body>' +
