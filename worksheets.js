@@ -210,10 +210,18 @@
             '</div>';
 
     if (kind === 'traceAA') {
-      q += '<table class="ws-trace-table"><tr>' +
-           '<td class="ws-trace-cell"><div class="ws-trace-cell-cap">大寫＝' + esc(item.upper||'') + '</div>' + fourLine(item.upper) + '</td>' +
-           '<td class="ws-trace-cell"><div class="ws-trace-cell-cap">小寫＝' + esc(item.lower||'') + '</div>' + fourLine(item.lower) + '</td>' +
-           '</tr></table>';
+      // ★ v35: 大寫上、小寫下，兩列各自水平排列 (model + 6 練習)，不擠出 A4
+      var upperBlock =
+        '<div class="ws-trace-cell">' +
+          '<div class="ws-trace-cell-cap">大寫＝' + esc(item.upper || '') + '</div>' +
+          fourLine(item.upper) +
+        '</div>';
+      var lowerBlock =
+        '<div class="ws-trace-cell">' +
+          '<div class="ws-trace-cell-cap">小寫＝' + esc(item.lower || '') + '</div>' +
+          fourLine(item.lower) +
+        '</div>';
+      q += '<div class="ws-trace-aa">' + upperBlock + lowerBlock + '</div>';
     } else if (kind === 'trace') {
       q += fourLine(item.letter || item.glyph || '');
     } else if (kind === 'color') {
@@ -277,12 +285,12 @@
       '.ws-q{break-inside:avoid;margin:14px 0;padding:10px 12px;background:#fffdf3;border:1px dashed #d7ccc8;border-radius:10px;}' +
       '.ws-qlabel{font-weight:bold;color:#c05621;margin-bottom:8px;font-size:1.05rem;}' +
       '.ws-qhint{color:#888;font-weight:normal;font-size:.95rem;}' +
-      '.ws-trace-table{border-collapse:collapse;width:100%;}' +
-      '.ws-trace-cell{padding:6px 8px;border:1px solid #eee;background:#fffdf3;vertical-align:top;text-align:center;}' +
-      '.ws-trace-cell-cap{font-weight:bold;color:#5d4037;margin-bottom:4px;}' +
+      '.ws-trace-aa{display:flex;flex-direction:column;gap:8px;width:100%;}' +
+      '.ws-trace-cell{padding:6px 4px;border:1px solid #eee;background:#fffdf3;text-align:center;overflow:hidden;}' +
+      '.ws-trace-cell-cap{font-weight:bold;color:#5d4037;margin-bottom:4px;font-size:.95rem;}' +
       '.ws-trace{display:inline-block;margin:4px 0;}' +
       '.ws-trace-grid{display:inline-flex;gap:0;align-items:center;}' +
-      '.ws-trace-svg{display:inline-block;background:#fff;border:1px solid #eee;width:80px;height:97px;}' +
+      '.ws-trace-svg{display:inline-block;background:#fff;border:1px solid #eee;width:23mm;height:28mm;max-width:100%;}' + '.ws-trace-tiny{font:11px sans-serif;color:#888;margin-top:4px;}' +
       '.ws-trace-tiny{font:12px sans-serif;color:#888;margin-top:6px;}' +
       '.ws-match-row{display:flex;align-items:center;gap:8px;margin:6px 0;}' +
       '.ws-match-left{flex:0 0 32%;text-align:right;font-weight:bold;background:#fff;border:1px solid #eee;padding:6px 10px;border-radius:6px;}' +
