@@ -1,7 +1,8 @@
 // ============================================================
 // worksheets.js — 英文學習單產生器 (95 課)
-// v32: 四線格 zhuyin 「描寫」改為 true single-stroke skeleton glyph
-//      (一個字母一條不封閉 path, 無外輪廓 = 無空心雙框)
+// v34: 單筆骨架描寫 (single-stroke skeleton LETTER_PATHS) +
+//      自動組題 (lesson.items 缺失時,從 lesson.main 自動產出 traceAA + color +
+//                circleSpell + connect 四個標準題型)
 // ============================================================
 (function () {
   var SHEET = window.Worksheets = {};
@@ -10,24 +11,19 @@
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   };
 
-  // ---- 字型 (仅供彩色塗色字使用, 本版本描寫格不再使用字型) ----
-  var UPPER_FONT = "'Patrick Hand SC','Caveat Brush','Arial Black','Sniglet','cursive'";
-  var LOWER_FONT = "'Caveat Brush','Patrick Hand SC','Sniglet','Schoolbell','cursive'";
-  var HAND_FONT  = UPPER_FONT + ',' + LOWER_FONT;
   var COLOR_FONT = "'Permanent Marker','Caveat Brush','Patrick Hand SC','cursive'";
   var GOOGLE_FONTS_HREF =
-    'https://fonts.googleapis.com/css2?family=Patrick+Hand+SC&family=Caveat+Brush&family=Permanent+Marker&family=Sniglet&display=swap';
+    'https://fonts.googleapis.com/css2?family=Caveat+Brush&family=Patrick+Hand+SC&family=Permanent+Marker&display=swap';
 
   // ------------------------------------------------------------
-  // 【v32】單筆中線骨架字 LETTER_PATHS
-  //   每個字母只有一條不封閉的 M/L/Q 命令 path,
-  //   描紅して小朋友拿鉛筆一筆描出來。
-  //   viewBox 140 × 170
+  // [v34] 單筆中線骨架字 LETTER_PATHS
+  //   每個字母就是一條不封閉 path (M/L/Q 命令),沒有外輪廓 = 沒有空心雙框。
+  //   dasharray 在手寫筆畫上跑,小朋友拿鉛筆一筆描到底。
+  //   viewBox 140 × 170:
   //     大寫: ceiling y=18 ↓ baseline y=140
-  //     小寫: x-height t=76 ↓ baseline y=140, ascender ↑ y=18, descender ↓ y=160
+  //     小寫: x-height t=76 ↓ baseline y=140; ascender ↑ y=18; descender ↓ y=160
   // ------------------------------------------------------------
   var LETTER_PATHS = {
-    // 大寫
     'A': 'M 36 138 L 70 18 L 104 138 M 48 96 L 92 96',
     'B': 'M 36 18 L 36 138 L 84 138 Q 108 138 108 112 Q 108 90 80 88 Q 108 86 108 56 Q 108 18 78 18 L 36 18 M 36 78 L 80 78',
     'C': 'M 100 28 Q 80 18 56 22 Q 28 36 28 78 Q 28 122 56 136 Q 80 140 100 130',
@@ -54,7 +50,6 @@
     'X': 'M 32 18 L 108 138 M 108 18 L 32 138',
     'Y': 'M 30 18 L 70 78 L 110 18 M 70 78 L 70 138',
     'Z': 'M 32 18 L 108 18 L 32 138 L 108 138',
-    // 小寫
     'a': 'M 92 96 L 92 138 M 92 96 Q 92 78 70 78 Q 32 78 32 108 Q 32 138 70 138 Q 84 138 92 128',
     'b': 'M 36 18 L 36 138 M 36 108 Q 36 78 70 78 Q 96 78 96 108 Q 96 138 70 138 Q 36 138 36 108',
     'c': 'M 96 88 Q 78 78 56 82 Q 32 92 32 108 Q 32 130 56 138 Q 78 142 96 132',
@@ -86,18 +81,15 @@
   function fourLine(letter) {
     var L = String(letter == null ? '' : letter);
     if (!L) return '';
-    var baselineY = 140;
-    var pathD = LETTER_PATHS[L] || LETTER_PATHS[L.toUpperCase()] || '';
+    var pathD = LETTER_PATHS[L] || '';
 
     function slot(traced) {
-      var glyph;
+      var glyph = '';
       if (traced && pathD) {
-        // ★ v32: 用手繪單筆 path (fill:none + dasharray) 取代字型外輪廓
-        //   完全沒有內外雙框, 小朋友拿鉛筆一筆描到底。
         glyph = '<path d="' + pathD + '" ' +
                 'fill="none" stroke="#d32f2f" stroke-width="3.2" ' +
                 'stroke-dasharray="7 5" stroke-linecap="round" stroke-linejoin="round"/>';
-      } else { glyph = ''; }
+      }
       var lines =
         '<line x1="8" y1="18" x2="132" y2="18" stroke="#1976d2" stroke-width="1.4"/>' +
         '<line x1="8" y1="80" x2="132" y2="80" stroke="#1976d2" stroke-width="1.2" stroke-dasharray="5 4"/>' +
@@ -113,9 +105,6 @@
     '</div>';
   }
 
-  // ------------------------------------------------------------
-  // 大字塗色框 (G2 字族 / 字母塗色): 字型仍可用 (要粗黑可填色)
-  // ------------------------------------------------------------
   function bigOutline(glyph) {
     var G = String(glyph == null ? '' : glyph);
     if (!G) return '';
@@ -146,9 +135,6 @@
       '</svg></div>';
   }
 
-  // ------------------------------------------------------------
-  // 連連看
-  // ------------------------------------------------------------
   function linesMatch(leftItems, rightItems) {
     var out = '<div class="ws-match">';
     var n = Math.max(leftItems.length, rightItems.length);
@@ -164,8 +150,114 @@
   }
 
   // ------------------------------------------------------------
-  // 包裝學習單 (列印用 A4)
+  // ★ v34: 自動組題 (當 lesson.items 沒有定義時)
+  //   從 lesson.main.uppercase / .lowercase 取字母
+  //   從 lesson.main.vocab 取單字 → color + circleSpell + connect
   // ------------------------------------------------------------
+  function letterFromMain(text) {
+    var m = (text || '').match(/[A-Za-z]/);
+    return m ? m[0] : '';
+  }
+  function autoBuildItems(module, lesson) {
+    var items = [];
+    var upper = letterFromMain(lesson.main && lesson.main.uppercase);
+    var lower = letterFromMain(lesson.main && lesson.main.lowercase);
+    if (!upper && !lower) {
+      var t = (lesson.title || lesson.id || '');
+      upper = letterFromMain(t);
+      lower = t.match(/[a-z]/);
+      lower = lower ? lower[0] : '';
+    }
+    if (upper || lower) {
+      items.push({
+        kind: 'traceAA',
+        upper: upper, lower: lower,
+        _answer: '大寫＝' + upper + ' / 小寫＝' + lower
+      });
+    }
+    var vocab = (lesson.main && lesson.main.vocab) || [];
+    if (vocab.length) {
+      items.push({
+        kind: 'color',
+        glyph: vocab[0].en,
+        glyphLabel: vocab[0].zh + ' (' + vocab[0].en + ')',
+        _answer: '請塗色：' + vocab[0].en + ' = ' + vocab[0].zh
+      });
+      if (vocab.length >= 2) {
+        var target = upper || lower || vocab[0].en.charAt(0);
+        items.push({
+          kind: 'circleSpell',
+          pool: vocab.map(function(v){return v.en;}),
+          target: target,
+          _answer: '圈出 ' + target + ': 總共 ' + vocab.join(',').split('').filter(function(ch){return ch.toLowerCase()===target.toLowerCase();}).length + ' 個'
+        });
+      }
+      items.push({
+        kind: 'connect',
+        left: vocab.map(function(v){return v.en;}),
+        right: vocab.map(function(v){return v.zh;}),
+        _answer: '配對：' + vocab.map(function(v){return v.en+'＝'+v.zh;}).join('／')
+      });
+    }
+    return items;
+  }
+
+  function buildQuestion(item, idx) {
+    var kind = item.kind || 'text';
+    var label = item.label || ('題 ' + (idx + 1));
+    var q = '<div class="ws-q"><div class="ws-qlabel">' + esc(label) +
+            (item.hint ? '　<span class="ws-qhint">' + esc(item.hint) + '</span>' : '') +
+            '</div>';
+
+    if (kind === 'traceAA') {
+      q += '<table class="ws-trace-table"><tr>' +
+           '<td class="ws-trace-cell"><div class="ws-trace-cell-cap">大寫＝' + esc(item.upper||'') + '</div>' + fourLine(item.upper) + '</td>' +
+           '<td class="ws-trace-cell"><div class="ws-trace-cell-cap">小寫＝' + esc(item.lower||'') + '</div>' + fourLine(item.lower) + '</td>' +
+           '</tr></table>';
+    } else if (kind === 'trace') {
+      q += fourLine(item.letter || item.glyph || '');
+    } else if (kind === 'color') {
+      q += '<div class="ws-color-cell">' + bigOutline(item.glyph) +
+           '<div class="ws-color-label">' + esc(item.glyphLabel || item.glyph) + '</div></div>';
+    } else if (kind === 'circleSpell') {
+      var pool = item.pool || [];
+      var target = item.target || '';
+      var inner = pool.map(function(w){
+        var parts = [];
+        for (var i=0;i<w.length;i++){
+          var ch = w[i];
+          if (ch.toLowerCase() === target.toLowerCase()){
+            parts.push('<span class="ws-circle">' + esc(ch) + '</span>');
+          } else {
+            parts.push(esc(ch));
+          }
+        }
+        return '<span class="ws-word-block">' + parts.join('') + '</span>';
+      }).join('');
+      q += '<div class="ws-pool">' + inner + '</div>';
+    } else if (kind === 'connect') {
+      q += linesMatch(item.left || [], item.right || []);
+    } else {
+      q += '<div>' + esc(item.text || '') + '</div>';
+    }
+    if (item._answer) {
+      q += '<div class="ws-answers">💡 教師版答案：' + esc(item._answer) + '</div>';
+    }
+    q += '</div>';
+    return q;
+  }
+
+  function build(module, lesson, opts) {
+    opts = opts || {};
+    var body = '';
+    body += '<h2 class="ws-mod">📚 模組：' + esc(module.title) + '　／　' + esc(lesson.title) + '</h2>';
+    var sourceItems = (lesson.items && lesson.items.length) ? lesson.items : autoBuildItems(module, lesson);
+    sourceItems.forEach(function (it, idx) { body += buildQuestion(it, idx); });
+    var html = toHtml(body, lesson.title || '英文學習單');
+    var answers = html.replace(/class="ws-answers"/g, 'class="ws-answers ws-on"');
+    return { html: html, answers: answers };
+  }
+
   function toHtml(body, title) {
     title = title || '英文學習單';
     return '<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8">' +
@@ -181,109 +273,64 @@
       '.ws-hd h1{margin:0;font-size:20px;color:#3e2723;}' +
       '.ws-name{font:14px sans-serif;color:#555;}' +
       '.ws-name input{border:0;border-bottom:1.5px solid #888;width:120px;margin-left:6px;font:14px sans-serif;outline:none;background:transparent;}' +
-      '.ws-q{break-inside:avoid;margin:14px 0;padding:10px 12px;background:#fffceb;border:1px dashed #d7ccc8;border-radius:10px;}' +
+      '.ws-mod{margin:0 0 10px;font-size:16px;color:#3e2723;}' +
+      '.ws-q{break-inside:avoid;margin:14px 0;padding:10px 12px;background:#fffdf3;border:1px dashed #d7ccc8;border-radius:10px;}' +
       '.ws-qlabel{font-weight:bold;color:#c05621;margin-bottom:8px;font-size:1.05rem;}' +
-      '.ws-word{font-size:1.1rem;font-weight:bold;}' +
-      '.ws-trace-tiny{font:12px sans-serif;color:#888;margin-top:6px;}' +
+      '.ws-qhint{color:#888;font-weight:normal;font-size:.95rem;}' +
+      '.ws-trace-table{border-collapse:collapse;width:100%;}' +
+      '.ws-trace-cell{padding:6px 8px;border:1px solid #eee;background:#fffdf3;vertical-align:top;text-align:center;}' +
+      '.ws-trace-cell-cap{font-weight:bold;color:#5d4037;margin-bottom:4px;}' +
       '.ws-trace{display:inline-block;margin:4px 0;}' +
       '.ws-trace-grid{display:inline-flex;gap:0;align-items:center;}' +
-      '.ws-trace-svg{display:inline-block;background:#fff;border:1px solid #eee;}' +
+      '.ws-trace-svg{display:inline-block;background:#fff;border:1px solid #eee;width:80px;height:97px;}' +
+      '.ws-trace-tiny{font:12px sans-serif;color:#888;margin-top:6px;}' +
       '.ws-match-row{display:flex;align-items:center;gap:8px;margin:6px 0;}' +
       '.ws-match-left{flex:0 0 32%;text-align:right;font-weight:bold;background:#fff;border:1px solid #eee;padding:6px 10px;border-radius:6px;}' +
       '.ws-match-mid{flex:1;text-align:center;color:#888;letter-spacing:2px;}' +
       '.ws-match-right{flex:0 0 32%;font-weight:bold;background:#fff;border:1px solid #eee;padding:6px 10px;border-radius:6px;}' +
-      '.ws-color{display:inline-block;margin:6px;}' +
-      '.ws-color svg{display:block;background:#fff;border:1px solid #eee;}' +
-      '.ws-color-label{font-size:.9rem;color:#5b6e7d;margin-top:2px;font-weight:bold;text-align:center;}' +
       '.ws-color-cell{display:inline-block;margin:6px;text-align:center;}' +
+      '.ws-color-label{font-size:.9rem;color:#5b6e7d;margin-top:2px;font-weight:bold;}' +
+      '.ws-pool{line-height:2.4;font-size:1.25rem;font-weight:700;letter-spacing:1px;}' +
+      '.ws-word-block{display:inline-block;margin:6px 14px 6px 0;}' +
+      '.ws-circle{border:2.5px solid #c05621;border-radius:50%;padding:0 3px;margin:0 1px;color:#c05621;}' +
       '.ws-answers{background:#fff8e1;border:1px dashed #fbc02d;padding:6px 10px;border-radius:6px;margin-top:6px;display:none;font-weight:bold;}' +
-      '.ws-show-answers .ws-answers{display:block;}' +
-      '.ws-printonly{display:none;}' +
-      '.ws-keys{margin:10px 0;}' +
-      '.ws-key{font-weight:bold;color:#c05621;margin-right:8px;}' +
+      '.ws-on{display:block;}' +
       '</style></head><body><div class="ws-sheet">' +
-      '<div class="ws-hd"><h1>📘 ' + esc(title) + '</h1><div class="ws-name">姓名 ' + '<input type="text" placeholder="________">　班級 ' + '<input type="text" style="width:60px" placeholder="_____"></div></div>' +
+      '<div class="ws-hd"><h1>📘 ' + esc(title) + '</h1><div class="ws-name">姓名 <input type="text" placeholder="________">　班級 <input type="text" style="width:60px" placeholder="_____"></div></div>' +
       body +
       '</div></body></html>';
-  }
-
-  // ------------------------------------------------------------
-  // 根據 lesson.class 與 items 安排題型
-  // ------------------------------------------------------------
-  function buildQuestion(item, idx) {
-    var html = '';
-    var kind = item.kind || (item.upper ? 'traceAA' :
-                  item.syllable ? 'syllable' :
-                  item.items ? 'connect' :
-                  item.glyph ? 'color' : 'text');
-    var label = item.label || ('題 ' + (idx + 1));
-    var q = '<div class="ws-q"><div class="ws-qlabel">' + esc(label) + (item.hint ? '　<span style="color:#888;font-weight:normal;">' + esc(item.hint) + '</span>' : '') + '</div>';
-
-    if (kind === 'traceAA') {
-      q += '<div style="display:flex;flex-wrap:wrap;gap:8px;">' +
-           fourLine(item.upper).replace('<div class="ws-trace">', '<div class="ws-trace" style="display:inline-block;">') +
-           fourLine(item.lower).replace('<div class="ws-trace">', '<div class="ws-trace" style="display:inline-block;">') +
-           '</div>';
-      item._answer = '大寫＝' + (item.upper || '') + '／小寫＝' + (item.lower || '');
-    } else if (kind === 'trace') {
-      q += fourLine(item.letter || item.glyph || '');
-      item._answer = '字＝' + (item.letter || item.glyph || '');
-    } else if (kind === 'syllable') {
-      q += '<div class="ws-word">' + esc(item.syllable) + '</div>' +
-           '<div style="margin-top:8px">' + esc(item.example || '') + '</div>';
-      item._answer = '音節／字＝' + (item.syllable || '');
-    } else if (kind === 'color') {
-      q += '<div class="ws-color-cell">' +
-        bigOutline(item.glyph) +
-        '<div class="ws-color-label">' + esc(item.glyphLabel || item.glyph) + '</div>' +
-        '</div>';
-      item._answer = '請塗色：' + (item.glyph || '');
-    } else if (kind === 'connect') {
-      q += linesMatch(item.left || [], item.right || []);
-      item._answer = '配對：' + (item.left || []).join('／') + ' ⇄ ' + (item.right || []).join('／');
-    } else {
-      q += '<div>' + esc(item.text || '') + '</div>';
-    }
-    if (item.answer || item._answer) {
-      q += '<div class="ws-answers">💡 答：' + esc(item.answer || item._answer) + '</div>';
-    }
-    q += '</div>';
-    return q;
-  }
-
-  function build(module, lesson, opts) {
-    opts = opts || {};
-    var body = '';
-    body += '<h2 style="margin:0 0 6px;font-size:16px;color:#3e2723;">📚 模組：' + esc(module.title) + '　／　' + esc(lesson.title) + '</h2>';
-    if (lesson.objective) body += '<div style="margin-bottom:10px;font:14px sans-serif;color:#444;">' + esc(lesson.objective) + '</div>';
-    (lesson.items || []).forEach(function (it, idx) { body += buildQuestion(it, idx); });
-    var html = toHtml(body, lesson.title || '英文學習單');
-    var answers = body.replace(/class="ws-q"/g, 'class="ws-q ws-answers-on"')
-                      .replace(/class="ws-answers"/g, 'class="ws-answers" style="display:block"');
-    return { html: html, answers: answers };
   }
 
   SHEET.fourLine = fourLine;
   SHEET.bigOutline = bigOutline;
   SHEET.linesMatch = linesMatch;
+  SHEET.autoBuildItems = autoBuildItems;
+  SHEET.buildQuestion = buildQuestion;
   SHEET.build = build;
   SHEET.toHtml = toHtml;
 
-  SHEET.open = function (module, lesson) {
+  SHEET.open = function (module, lesson, mode) {
     var win = window.open('', '_blank');
     if (!win) { alert('請允許彈出視窗'); return; }
     var b = build(module, lesson);
-    win.document.write(b.html);
+    win.document.open();
+    win.document.write((mode === 'answers' ? b.answers : b.html));
     win.document.close();
     return win;
   };
 
-  SHEET.showAnswers = function (module, lesson) {
-    var win = window.open('', '_blank');
-    if (!win) return;
-    var b = build(module, lesson);
-    win.document.write(b.answers);
-    win.document.close();
-    return win;
+  SHEET.showAnswers = function (module, lesson, box) {
+    if (box) {
+      var b = build(module, lesson);
+      box.innerHTML = b.answers;
+      box.style.display = 'block';
+    } else if (window.open) {
+      var win2 = window.open('', '_blank');
+      if (!win2) return;
+      var b2 = build(module, lesson);
+      win2.document.open();
+      win2.document.write(b2.answers);
+      win2.document.close();
+    }
   };
 })();
