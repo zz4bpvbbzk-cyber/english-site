@@ -67,8 +67,7 @@
       var glyph = traced
         ? '<text x="70" y="' + baselineY + '" text-anchor="middle" dominant-baseline="alphabetic" ' +
             'font-size="' + fontSize + '" font-family="' + useFont + '" font-weight="900" ' +
-            'paint-order="stroke fill" ' +
-            'fill="#ffeaea" stroke="#e53935" stroke-width="' + sw + '" stroke-dasharray="' + dash + '"' +
+            'fill="none" stroke="#888" stroke-width="' + sw + '" stroke-dasharray="' + dash + '"' +
             'stroke-linecap="round" stroke-linejoin="round">' + esc(L) + '</text>'
         : '';
       var lines =
